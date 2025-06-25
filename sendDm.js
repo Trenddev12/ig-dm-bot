@@ -140,44 +140,14 @@ app.post('/send-instagram-dm', async (req, res) => {
       timeout: 60000
     };
 
-    // For Render deployment, try multiple Chrome detection methods
+    // Chrome detection for different environments
     if (process.env.NODE_ENV === 'production') {
       console.log('🏭 Production environment detected');
 
-      // Try different Chrome paths for Render
-      const possiblePaths = [
-        '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium'
-      ];
+      // For Render, don't specify executablePath - let Puppeteer find Chrome
+      console.log('🔍 Using Puppeteer auto-detection for Chrome');
+      // Don't set executablePath, let Puppeteer handle it
 
-      let foundPath = null;
-      for (const path of possiblePaths) {
-        try {
-          const fs = require('fs');
-          if (fs.existsSync(path)) {
-            foundPath = path;
-            console.log(`✅ Found Chrome at: ${path}`);
-            break;
-          }
-        } catch (e) {
-          // Continue to next path
-        }
-      }
-
-      if (foundPath) {
-        browserOptions.executablePath = foundPath;
-      } else {
-        console.log('⚠️ No Chrome found at expected paths, using Puppeteer default');
-        try {
-          browserOptions.executablePath = puppeteer.executablePath();
-        } catch (e) {
-          console.log('⚠️ Puppeteer executablePath failed, using system Chrome');
-          // Don't set executablePath, let Puppeteer find it
-        }
-      }
     } else {
       // Local development
       try {
