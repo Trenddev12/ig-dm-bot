@@ -80,15 +80,18 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(bodyParser.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Add error handling for JSON parsing
 app.use((error, req, res, next) => {
   if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
     console.log('❌ JSON parsing error:', error.message);
+    console.log('📝 Raw body:', req.body);
     return res.status(400).json({
       success: false,
-      error: 'Invalid JSON in request body'
+      error: 'Invalid JSON in request body',
+      details: error.message
     });
   }
   next();
