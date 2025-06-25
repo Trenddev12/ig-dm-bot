@@ -1,0 +1,15 @@
+{
+  "name": "ig-dm-bot",
+  "version": "1.0.0",
+  "main": "sendDm.js",
+  "scripts": {
+    "postinstall": "puppeteer install",
+    "start": "node sendDm.js"
+  },
+  "dependencies": {
+    "body-parser": "^2.2.0",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "puppeteer": "^24.10.2"
+  }
+}
