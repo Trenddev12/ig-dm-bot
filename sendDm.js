@@ -206,28 +206,37 @@ app.post('/clear-session', async (req, res) => {
 app.post('/send-instagram-dm', async (req, res) => {
   console.log('📥 Received POST request to /send-instagram-dm');
   console.log('📋 Request body:', req.body);
-  console.log('📋 Request headers:', req.headers);
 
   const { username, message } = req.body;
 
   // Input validation
   if (!username || !message) {
-    console.log('❌ Missing required fields: username or message');
-    console.log('📝 Username:', username);
-    console.log('📝 Message:', message);
+    console.log('❌ Missing required fields');
     return res.status(400).json({
       success: false,
-      error: "Missing required fields: username and message",
-      received: { username, message }
+      error: "Missing required fields: username and message"
     });
   }
 
   console.log(`🚀 Starting DM process for @${username}`);
-  console.log(`📝 Message: "${message}"`);
 
+  // Send immediate response to prevent timeout
+  res.status(200).json({
+    success: true,
+    message: "DM request received and processing started",
+    recipient: username,
+    timestamp: new Date().toISOString(),
+    status: "processing"
+  });
+
+  // Process DM in background
+  processDmInBackground(username, message);
+});
+
+async function processDmInBackground(username, message) {
   let browser;
   try {
-    console.log('🌐 Launching browser...');
+    console.log('🌐 Launching browser for background processing...');
 
     // Render-compatible browser configuration
     const browserOptions = {
@@ -362,30 +371,18 @@ app.post('/send-instagram-dm', async (req, res) => {
     await new Promise(resolve => setTimeout(resolve, 2000));
 
     console.log(`✅ DM sent successfully to @${username}`);
-    res.status(200).json({
-      success: true,
-      message: "DM sent successfully",
-      recipient: username,
-      timestamp: new Date().toISOString()
-    });
+    console.log(`🎉 BACKGROUND PROCESS COMPLETED: Message sent to @${username}`);
 
   } catch (err) {
-    console.error(`❌ Error sending DM to @${username}:`, err.message);
+    console.error(`❌ BACKGROUND ERROR for @${username}:`, err.message);
     console.error('Stack trace:', err.stack);
-
-    res.status(500).json({
-      success: false,
-      error: err.message,
-      recipient: username,
-      timestamp: new Date().toISOString()
-    });
   } finally {
     if (browser) {
       console.log('🔒 Closing browser...');
       await browser.close();
     }
   }
-});
+}
 
 // Start the server with Chrome setup
 const PORT = process.env.PORT || 3000;
