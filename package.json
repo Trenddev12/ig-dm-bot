@@ -1,13 +1,24 @@
 {
   "name": "ig-dm-bot",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "Instagram DM Bot with Session ID Authentication for Render Deployment",
   "main": "sendDm.js",
   "scripts": {
-    "postinstall": "npx puppeteer browsers install chrome"
-,
-    "start": "node sendDm.js"
+    "postinstall": "npx puppeteer browsers install chrome",
+    "start": "node sendDm.js",
+    "dev": "node sendDm.js",
+    "test": "node test-session-id.js",
+    "test-dm": "node test-dm.js"
+  },
+  "keywords": ["instagram", "dm", "bot", "automation", "puppeteer", "render"],
+  "author": "FluxDX",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
   "dependencies": {
+    "axios": "^1.10.0",
     "body-parser": "^2.2.0",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
