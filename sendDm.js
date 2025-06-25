@@ -144,9 +144,24 @@ app.post('/send-instagram-dm', async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
       console.log('🏭 Production environment detected');
 
-      // For Render, don't specify executablePath - let Puppeteer find Chrome
-      console.log('🔍 Using Puppeteer auto-detection for Chrome');
-      // Don't set executablePath, let Puppeteer handle it
+      // Set Puppeteer cache path for Render
+      process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
+
+      // Try to find Chrome in the expected location
+      const expectedChromePath = '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome';
+
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(expectedChromePath)) {
+          browserOptions.executablePath = expectedChromePath;
+          console.log(`✅ Found Chrome at: ${expectedChromePath}`);
+        } else {
+          console.log('⚠️ Chrome not found at expected path, using Puppeteer default');
+          // Let Puppeteer try to find it
+        }
+      } catch (error) {
+        console.log('⚠️ Error checking Chrome path:', error.message);
+      }
 
     } else {
       // Local development

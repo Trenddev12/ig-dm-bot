@@ -4,7 +4,8 @@
   "description": "Instagram DM Bot with Session ID Authentication for Render Deployment",
   "main": "sendDm.js",
   "scripts": {
-    "postinstall": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false npx puppeteer browsers install chrome",
+    "postinstall": "node install-chrome.js",
+    "build": "node install-chrome.js",
     "start": "node sendDm.js",
     "dev": "node sendDm.js",
     "test": "node test-session-id.js",
