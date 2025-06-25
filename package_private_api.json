@@ -1,0 +1,29 @@
+{
+  "name": "instagram-private-api-bot",
+  "version": "2.0.0",
+  "description": "FREE Instagram DM Bot using Instagram-Private-API - Perfect for n8n integration",
+  "main": "instagram_private_api_bot.js",
+  "scripts": {
+    "start": "node instagram_private_api_bot.js",
+    "dev": "node instagram_private_api_bot.js",
+    "test": "node test_private_api.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "instagram-private-api": "^1.45.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "instagram",
+    "dm",
+    "bot",
+    "automation",
+    "n8n",
+    "free",
+    "private-api"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
