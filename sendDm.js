@@ -144,23 +144,34 @@ app.post('/send-instagram-dm', async (req, res) => {
     if (process.env.NODE_ENV === 'production') {
       console.log('🏭 Production environment detected');
 
-      // Set Puppeteer cache path for Render
-      process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
+      // For Render, try multiple Chrome locations
+      const possibleChromePaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+        '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
+      ];
 
-      // Try to find Chrome in the expected location
-      const expectedChromePath = '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome';
+      let foundChrome = false;
+      const fs = require('fs');
 
-      try {
-        const fs = require('fs');
-        if (fs.existsSync(expectedChromePath)) {
-          browserOptions.executablePath = expectedChromePath;
-          console.log(`✅ Found Chrome at: ${expectedChromePath}`);
-        } else {
-          console.log('⚠️ Chrome not found at expected path, using Puppeteer default');
-          // Let Puppeteer try to find it
+      for (const chromePath of possibleChromePaths) {
+        try {
+          if (fs.existsSync(chromePath)) {
+            browserOptions.executablePath = chromePath;
+            console.log(`✅ Found Chrome at: ${chromePath}`);
+            foundChrome = true;
+            break;
+          }
+        } catch (error) {
+          // Continue to next path
         }
-      } catch (error) {
-        console.log('⚠️ Error checking Chrome path:', error.message);
+      }
+
+      if (!foundChrome) {
+        console.log('⚠️ No Chrome found at standard paths, trying Puppeteer default');
+        // Don't set executablePath, let Puppeteer handle it
       }
 
     } else {
