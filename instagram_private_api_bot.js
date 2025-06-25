@@ -239,52 +239,99 @@ app.post('/login', async (req, res) => {
 // Send DM endpoint (perfect for n8n)
 app.post('/send-dm', async (req, res) => {
     const { target_username, message, username, password, session_id } = req.body;
-    
+
+    console.log('📥 DM Request received:', { target_username, message: message?.substring(0, 50) + '...' });
+
     if (!target_username || !message) {
+        console.log('❌ Missing required fields');
         return res.status(400).json({
             success: false,
-            error: 'target_username and message are required'
+            error: 'target_username and message are required',
+            received: { target_username, message: message ? 'present' : 'missing' }
         });
     }
 
     try {
-        // Auto-login if not logged in
+        // Always try to ensure we're logged in
         if (!bot.isLoggedIn) {
-            console.log('🔄 Not logged in, attempting auto-login...');
-            
-            if (session_id) {
-                await bot.loginWithSession(session_id);
-            } else if (username && password) {
+            console.log('🔄 Bot not logged in, attempting login...');
+
+            // Try session ID first (from request or environment)
+            const sessionToUse = session_id || IG_SESSION_ID;
+            if (sessionToUse) {
+                console.log('🔑 Trying session login...');
+                await bot.loginWithSession(sessionToUse);
+            }
+
+            // If session failed, try credentials
+            if (!bot.isLoggedIn && (username && password)) {
+                console.log('🔐 Trying credential login...');
                 await bot.loginWithCredentials(username, password);
-            } else if (IG_SESSION_ID) {
-                await bot.loginWithSession(IG_SESSION_ID);
-            } else if (IG_USERNAME && IG_PASSWORD) {
+            } else if (!bot.isLoggedIn && (IG_USERNAME && IG_PASSWORD)) {
+                console.log('🔐 Trying environment credential login...');
                 await bot.loginWithCredentials(IG_USERNAME, IG_PASSWORD);
             }
-            
+
             if (!bot.isLoggedIn) {
+                console.log('❌ All login attempts failed');
                 return res.status(401).json({
                     success: false,
-                    error: 'Login required. Provide session_id or username+password'
+                    error: 'Unable to login to Instagram. Check session ID or credentials.',
+                    details: 'Session may have expired or credentials are invalid'
                 });
             }
         }
 
-        // Send DM immediately and return response
-        const result = await bot.sendDM(target_username, message);
-        
+        console.log('✅ Bot is logged in, sending DM...');
+
+        // Send DM with retry logic
+        let result;
+        let retryCount = 0;
+        const maxRetries = 2;
+
+        while (retryCount <= maxRetries) {
+            try {
+                result = await bot.sendDM(target_username, message);
+                break; // Success, exit retry loop
+            } catch (error) {
+                retryCount++;
+                console.log(`⚠️ DM attempt ${retryCount} failed:`, error.message);
+
+                if (retryCount <= maxRetries && error.message.includes('login')) {
+                    console.log('🔄 Login issue detected, re-authenticating...');
+                    bot.isLoggedIn = false;
+
+                    // Try to re-login
+                    const sessionToUse = session_id || IG_SESSION_ID;
+                    if (sessionToUse) {
+                        await bot.loginWithSession(sessionToUse);
+                    }
+
+                    if (!bot.isLoggedIn) {
+                        throw new Error('Re-authentication failed');
+                    }
+                } else if (retryCount > maxRetries) {
+                    throw error;
+                }
+            }
+        }
+
         if (result.success) {
+            console.log('🎉 DM sent successfully!');
             res.json(result);
         } else {
+            console.log('❌ DM failed:', result.error);
             res.status(500).json(result);
         }
 
     } catch (error) {
+        console.error('💥 Unexpected error:', error.message);
         res.status(500).json({
             success: false,
             error: error.message,
             target_username,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            details: 'Check server logs for more information'
         });
     }
 });
