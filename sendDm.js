@@ -69,7 +69,30 @@ const bodyParser = require('body-parser');
 const SessionManager = require('./session-manager');
 
 const app = express();
-app.use(bodyParser.json());
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.path}`);
+  console.log('📋 Headers:', req.headers);
+  if (req.method === 'POST') {
+    console.log('📝 Body:', req.body);
+  }
+  next();
+});
+
+app.use(bodyParser.json({ limit: '10mb' }));
+
+// Add error handling for JSON parsing
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    console.log('❌ JSON parsing error:', error.message);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid JSON in request body'
+    });
+  }
+  next();
+});
 
 const IG_USERNAME = process.env.IG_USERNAME;
 const IG_PASSWORD = process.env.IG_PASSWORD;
@@ -151,6 +174,18 @@ app.get("/", (req, res) => {
   res.send("FluxDX IG DM bot is live 🚀");
 });
 
+// Test POST endpoint to verify POST requests work
+app.post('/test', (req, res) => {
+  console.log('✅ Test POST endpoint hit');
+  console.log('📝 Body received:', req.body);
+  res.json({
+    success: true,
+    message: 'POST endpoint is working',
+    received: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Clear session endpoint
 app.post('/clear-session', async (req, res) => {
   try {
@@ -169,12 +204,22 @@ app.post('/clear-session', async (req, res) => {
 
 // Main POST endpoint to send DM
 app.post('/send-instagram-dm', async (req, res) => {
+  console.log('📥 Received POST request to /send-instagram-dm');
+  console.log('📋 Request body:', req.body);
+  console.log('📋 Request headers:', req.headers);
+
   const { username, message } = req.body;
 
   // Input validation
   if (!username || !message) {
     console.log('❌ Missing required fields: username or message');
-    return res.status(400).send("Missing required fields: username and message");
+    console.log('📝 Username:', username);
+    console.log('📝 Message:', message);
+    return res.status(400).json({
+      success: false,
+      error: "Missing required fields: username and message",
+      received: { username, message }
+    });
   }
 
   console.log(`🚀 Starting DM process for @${username}`);
