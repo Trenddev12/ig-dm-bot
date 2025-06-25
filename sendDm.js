@@ -1,15 +1,21 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
 
-// Configure Chrome path for production environment BEFORE any Puppeteer operations
-if (process.env.NODE_ENV === 'production') {
-  console.log('🔧 Configuring Chrome for production environment...');
+// Function to install and configure Chrome for production
+async function setupChromeForProduction() {
+  if (process.env.NODE_ENV !== 'production') {
+    return;
+  }
+
+  console.log('🔧 Setting up Chrome for production environment...');
 
   // Set Puppeteer cache directory
   process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
 
-  // Try to find Chrome executable
   const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  // Try to find existing Chrome installation
   const possibleChromePaths = [
     '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
     '/usr/bin/google-chrome-stable',
@@ -23,7 +29,7 @@ if (process.env.NODE_ENV === 'production') {
     try {
       if (fs.existsSync(chromePath)) {
         chromeExecutablePath = chromePath;
-        console.log(`✅ Found Chrome at: ${chromePath}`);
+        console.log(`✅ Found existing Chrome at: ${chromePath}`);
         break;
       }
     } catch (error) {
@@ -31,11 +37,31 @@ if (process.env.NODE_ENV === 'production') {
     }
   }
 
+  // If no Chrome found, install it at runtime
+  if (!chromeExecutablePath) {
+    console.log('📦 No Chrome found, installing at runtime...');
+    try {
+      execSync('npx puppeteer browsers install chrome', {
+        stdio: 'inherit',
+        timeout: 60000 // 60 second timeout
+      });
+
+      // Check again after installation
+      const expectedPath = '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome';
+      if (fs.existsSync(expectedPath)) {
+        chromeExecutablePath = expectedPath;
+        console.log(`✅ Chrome installed successfully at: ${expectedPath}`);
+      }
+    } catch (error) {
+      console.log('⚠️ Failed to install Chrome at runtime:', error.message);
+    }
+  }
+
   if (chromeExecutablePath) {
     process.env.PUPPETEER_EXECUTABLE_PATH = chromeExecutablePath;
     console.log(`🎯 Set PUPPETEER_EXECUTABLE_PATH to: ${chromeExecutablePath}`);
   } else {
-    console.log('⚠️ No Chrome found at expected paths');
+    console.log('❌ No Chrome available - bot may not work properly');
   }
 }
 const express = require('express');
@@ -316,29 +342,55 @@ app.post('/send-instagram-dm', async (req, res) => {
   }
 });
 
-// Start the server
+// Start the server with Chrome setup
 const PORT = process.env.PORT || 3000;
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Instagram DM Bot Server is running on port ${PORT}`);
-  console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🔑 Session ID configured: ${IG_SESSION_ID ? 'Yes' : 'No'}`);
-  console.log(`🌐 Health check: http://localhost:${PORT}/`);
-  console.log(`📡 DM endpoint: http://localhost:${PORT}/send-instagram-dm`);
+let serverInstance = null;
+
+async function startServer() {
+  // Setup Chrome for production environment
+  await setupChromeForProduction();
+
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Instagram DM Bot Server is running on port ${PORT}`);
+    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`🔑 Session ID configured: ${IG_SESSION_ID ? 'Yes' : 'No'}`);
+    console.log(`🌐 Health check: http://localhost:${PORT}/`);
+    console.log(`📡 DM endpoint: http://localhost:${PORT}/send-instagram-dm`);
+  });
+
+  return server;
+}
+
+// Start the server
+startServer().then(server => {
+  serverInstance = server;
+}).catch(error => {
+  console.error('❌ Failed to start server:', error);
+  process.exit(1);
 });
 
 // Graceful shutdown
+
 process.on('SIGTERM', () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Server closed');
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
 
 process.on('SIGINT', () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
-  server.close(() => {
-    console.log('✅ Server closed');
+  if (serverInstance) {
+    serverInstance.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  } else {
     process.exit(0);
-  });
+  }
 });
