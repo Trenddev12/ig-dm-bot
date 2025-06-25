@@ -11,13 +11,28 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // Add request logging
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.path}`);
   if (req.method === 'POST') {
     console.log('📝 Body:', req.body);
+    console.log('📋 Headers:', req.headers);
+  }
+  next();
+});
+
+// Error handling middleware
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && error.status === 400 && 'body' in error) {
+    console.log('❌ JSON parsing error:', error.message);
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid JSON in request body',
+      details: error.message
+    });
   }
   next();
 });
@@ -57,28 +72,21 @@ class InstagramPrivateAPIBot {
     async loginWithSession(sessionId) {
         try {
             console.log('📱 Attempting session-based login...');
-            
-            // Create session data structure
-            const sessionData = {
-                deviceString: this.ig.state.deviceString,
-                deviceId: this.ig.state.deviceId,
-                uuid: this.ig.state.uuid,
-                phoneId: this.ig.state.phoneId,
-                adid: this.ig.state.adid,
-                sessionid: sessionId,
-                cookies: `sessionid=${sessionId}; Path=/; Domain=.instagram.com; Secure; HttpOnly`
-            };
-            
-            // Try to deserialize session
-            await this.ig.state.deserialize(sessionData);
-            
-            // Test if session is valid by making a simple request
-            await this.ig.user.info(this.ig.state.cookieUserId);
-            
+            console.log('🔑 Session ID:', sessionId.substring(0, 20) + '...');
+
+            // Generate device first
+            this.ig.state.generateDevice('instagram_bot_user');
+
+            // Set session cookie directly
+            this.ig.state.cookieJar.setCookie(`sessionid=${sessionId}; Domain=.instagram.com; Path=/; Secure; HttpOnly`, 'https://instagram.com');
+
+            // Try to get current user info to validate session
+            const userInfo = await this.ig.account.currentUser();
+
             this.isLoggedIn = true;
-            console.log('✅ Session login successful');
+            console.log('✅ Session login successful for user:', userInfo.username);
             return true;
-            
+
         } catch (error) {
             console.log('❌ Session login failed:', error.message);
             this.isLoggedIn = false;
