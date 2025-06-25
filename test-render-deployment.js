@@ -2,8 +2,8 @@ const axios = require('axios');
 
 // Configuration for testing Render deployment
 const RENDER_CONFIG = {
-  // Replace this with your actual Render URL after deployment
-  baseUrl: 'https://ig-dm-bot-xxxx.onrender.com', // Update this!
+  // Your actual Render URL from the deployment
+  baseUrl: 'https://ig-dm-bot.onrender.com',
   testUsername: 'natgeo', // Safe account to test with
   testMessage: 'Hello from Render deployment! 🚀'
 };

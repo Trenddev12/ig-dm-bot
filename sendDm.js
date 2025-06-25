@@ -119,8 +119,10 @@ app.post('/send-instagram-dm', async (req, res) => {
   let browser;
   try {
     console.log('🌐 Launching browser...');
-    browser = await puppeteer.launch({
-      headless: true,
+
+    // Render-compatible browser configuration
+    const browserOptions = {
+      headless: 'new', // Use new headless mode
       args: [
         '--no-sandbox',
         '--disable-setuid-sandbox',
@@ -128,11 +130,65 @@ app.post('/send-instagram-dm', async (req, res) => {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu'
+        '--disable-gpu',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection'
       ],
-      executablePath: puppeteer.executablePath(),
       timeout: 60000
-    });
+    };
+
+    // For Render deployment, try multiple Chrome detection methods
+    if (process.env.NODE_ENV === 'production') {
+      console.log('🏭 Production environment detected');
+
+      // Try different Chrome paths for Render
+      const possiblePaths = [
+        '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+      ];
+
+      let foundPath = null;
+      for (const path of possiblePaths) {
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(path)) {
+            foundPath = path;
+            console.log(`✅ Found Chrome at: ${path}`);
+            break;
+          }
+        } catch (e) {
+          // Continue to next path
+        }
+      }
+
+      if (foundPath) {
+        browserOptions.executablePath = foundPath;
+      } else {
+        console.log('⚠️ No Chrome found at expected paths, using Puppeteer default');
+        try {
+          browserOptions.executablePath = puppeteer.executablePath();
+        } catch (e) {
+          console.log('⚠️ Puppeteer executablePath failed, using system Chrome');
+          // Don't set executablePath, let Puppeteer find it
+        }
+      }
+    } else {
+      // Local development
+      try {
+        browserOptions.executablePath = puppeteer.executablePath();
+        console.log(`🔍 Local Chrome at: ${browserOptions.executablePath}`);
+      } catch (error) {
+        console.log('⚠️ Using system Chrome for local development');
+      }
+    }
+
+    browser = await puppeteer.launch(browserOptions);
 
     const page = await browser.newPage();
 
