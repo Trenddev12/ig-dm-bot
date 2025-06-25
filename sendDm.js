@@ -1,5 +1,43 @@
 require('dotenv').config();
 const puppeteer = require('puppeteer');
+
+// Configure Chrome path for production environment BEFORE any Puppeteer operations
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔧 Configuring Chrome for production environment...');
+
+  // Set Puppeteer cache directory
+  process.env.PUPPETEER_CACHE_DIR = '/opt/render/.cache/puppeteer';
+
+  // Try to find Chrome executable
+  const fs = require('fs');
+  const possibleChromePaths = [
+    '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome',
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium-browser',
+    '/usr/bin/chromium'
+  ];
+
+  let chromeExecutablePath = null;
+  for (const chromePath of possibleChromePaths) {
+    try {
+      if (fs.existsSync(chromePath)) {
+        chromeExecutablePath = chromePath;
+        console.log(`✅ Found Chrome at: ${chromePath}`);
+        break;
+      }
+    } catch (error) {
+      // Continue to next path
+    }
+  }
+
+  if (chromeExecutablePath) {
+    process.env.PUPPETEER_EXECUTABLE_PATH = chromeExecutablePath;
+    console.log(`🎯 Set PUPPETEER_EXECUTABLE_PATH to: ${chromeExecutablePath}`);
+  } else {
+    console.log('⚠️ No Chrome found at expected paths');
+  }
+}
 const express = require('express');
 const bodyParser = require('body-parser');
 const SessionManager = require('./session-manager');
@@ -140,48 +178,10 @@ app.post('/send-instagram-dm', async (req, res) => {
       timeout: 60000
     };
 
-    // Chrome detection for different environments
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🏭 Production environment detected');
-
-      // For Render, try multiple Chrome locations
-      const possibleChromePaths = [
-        '/usr/bin/google-chrome-stable',
-        '/usr/bin/google-chrome',
-        '/usr/bin/chromium-browser',
-        '/usr/bin/chromium',
-        '/opt/render/.cache/puppeteer/chrome/linux-137.0.7151.119/chrome-linux64/chrome'
-      ];
-
-      let foundChrome = false;
-      const fs = require('fs');
-
-      for (const chromePath of possibleChromePaths) {
-        try {
-          if (fs.existsSync(chromePath)) {
-            browserOptions.executablePath = chromePath;
-            console.log(`✅ Found Chrome at: ${chromePath}`);
-            foundChrome = true;
-            break;
-          }
-        } catch (error) {
-          // Continue to next path
-        }
-      }
-
-      if (!foundChrome) {
-        console.log('⚠️ No Chrome found at standard paths, trying Puppeteer default');
-        // Don't set executablePath, let Puppeteer handle it
-      }
-
-    } else {
-      // Local development
-      try {
-        browserOptions.executablePath = puppeteer.executablePath();
-        console.log(`🔍 Local Chrome at: ${browserOptions.executablePath}`);
-      } catch (error) {
-        console.log('⚠️ Using system Chrome for local development');
-      }
+    // Chrome executable path is already configured via environment variable
+    console.log('🚀 Launching browser with configured settings...');
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) {
+      console.log(`🎯 Using Chrome at: ${process.env.PUPPETEER_EXECUTABLE_PATH}`);
     }
 
     browser = await puppeteer.launch(browserOptions);
