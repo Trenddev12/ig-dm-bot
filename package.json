@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "main": "sendDm.js",
   "scripts": {
-    "postinstall": "puppeteer install",
+    "postinstall": "npx puppeteer browsers install chrome"
+,
     "start": "node sendDm.js"
   },
   "dependencies": {
