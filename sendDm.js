@@ -21,7 +21,8 @@ app.post('/send-instagram-dm', async (req, res) => {
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    timeout: 60000 // Optional: increases timeout for slow startups
+    executablePath: puppeteer.executablePath(),  // ✅ This line ensures the right binary
+    timeout: 60000
   });
 
   const page = await browser.newPage();
