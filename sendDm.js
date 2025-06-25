@@ -111,7 +111,7 @@ async function loginToInstagram(page) {
   console.log('📱 Navigating to Instagram login page...');
   await page.goto('https://www.instagram.com/accounts/login/', {
     waitUntil: 'networkidle2',
-    timeout: 30000
+    timeout: 60000  // Increased timeout for slower connections
   });
 
   console.log('🔍 Waiting for login form...');
@@ -124,7 +124,7 @@ async function loginToInstagram(page) {
   console.log('🔐 Clicking login button...');
   await Promise.all([
     page.click('button[type="submit"]'),
-    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }),
+    page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 60000 }),
   ]);
 
   // Check login result
@@ -223,7 +223,7 @@ app.post('/send-instagram-dm', async (req, res) => {
     console.log(`🎯 Navigating to @${username}'s profile...`);
     await page.goto(`https://www.instagram.com/${username}/`, {
       waitUntil: 'networkidle2',
-      timeout: 30000
+      timeout: 60000  // Increased timeout for profile navigation
     });
 
     // Check if profile exists
